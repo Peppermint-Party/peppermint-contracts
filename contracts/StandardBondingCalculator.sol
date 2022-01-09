@@ -275,11 +275,11 @@ contract TimeBondingCalculator is IBondingCalculator {
     using LowGasSafeMath for uint;
     using LowGasSafeMath for uint112;
 
-    IERC20 public immutable Time;
+    IERC20 public immutable MINT;
 
-    constructor( address _Time ) {
-        require( _Time != address(0) );
-        Time = IERC20(_Time);
+    constructor( address _Mint ) {
+        require( _Mint != address(0) );
+        MINT = IERC20(_Mint);
     }
 
     function getKValue( address _pair ) public view returns( uint k_ ) {
@@ -315,12 +315,12 @@ contract TimeBondingCalculator is IBondingCalculator {
         ( uint reserve0, uint reserve1, ) = IUniswapV2Pair( _pair ).getReserves();
 
         uint reserve;
-        if ( IUniswapV2Pair( _pair ).token0() == address(Time) ) {
+        if ( IUniswapV2Pair( _pair ).token0() == address(MINT) ) {
             reserve = reserve1;
         } else {
-            require(IUniswapV2Pair( _pair ).token1() == address(Time), "not a Time lp pair");
+            require(IUniswapV2Pair( _pair ).token1() == address(MINT), "not a MINT lp pair");
             reserve = reserve0;
         }
-        return reserve.mul( 2 * ( 10 ** Time.decimals() ) ).div( getTotalValue( _pair ) );
+        return reserve.mul( 2 * ( 10 ** MINT.decimals() ) ).div( getTotalValue( _pair ) );
     }
 }

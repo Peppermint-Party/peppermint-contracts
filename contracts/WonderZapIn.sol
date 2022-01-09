@@ -920,7 +920,7 @@ contract Wonderland_ZapIn_V1 is ZapInBaseV3_1 {
     }
 
     /**
-    @notice Add liquidity to TraderJoe pools with ETH/ERC20 Tokens and buys Time Bond
+    @notice Add liquidity to TraderJoe pools with ETH/ERC20 Tokens and buys MINT Bond
     @param _FromTokenContractAddress The ERC20 token used (address(0x00) if ether)
     @param _amount The amount of fromToken to invest
     @param _minPoolTokens Minimum quantity of pool tokens to receive. Reverts otherwise

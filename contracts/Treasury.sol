@@ -230,7 +230,7 @@ interface IERC20Mintable {
   function mint( address account_, uint256 ammount_ ) external;
 }
 
-interface ITIMEERC20 is IERC20Mintable, IERC20 {
+interface IMintToken is IERC20Mintable, IERC20 {
     function burnFrom(address account_, uint256 amount_) external;
 }
 
@@ -238,7 +238,7 @@ interface IBondCalculator {
   function valuation( address pair_, uint amount_ ) external view returns ( uint _value );
 }
 
-contract TimeTreasury is Ownable {
+contract MintTreasury is Ownable {
 
     using LowGasSafeMath for uint;
     using LowGasSafeMath for uint32;
@@ -266,10 +266,10 @@ contract TimeTreasury is Ownable {
         LIQUIDITYMANAGER, 
         DEBTOR, 
         REWARDMANAGER, 
-        SOHM 
+        SMINT 
     }
 
-    ITIMEERC20 public immutable Time;
+    IMintToken public immutable MINT;
     uint32 public immutable secondsNeededForQueue;
 
     address[] public reserveTokens; // Push only, beware false-positives.
@@ -316,23 +316,23 @@ contract TimeTreasury is Ownable {
 
     uint256 public limitAmount;
 
-    IERC20 public MEMOries;
-    uint public sOHMQueue; // Delays change to sOHM address
+    IERC20 public sPeppermintToken;
+    uint public sMINTQueue; // Delays change to sMint address
     
     uint public totalReserves; // Risk-free value of all assets
     uint public totalDebt;
 
     constructor (
-        address _Time,
-        address _MIM,
+        address _Mint,
+        address _AVAX,
         uint32 _secondsNeededForQueue,
         uint256 _limitAmount
     ) {
-        require( _Time != address(0) );
-        Time = ITIMEERC20(_Time);
+        require( _Mint != address(0) );
+        MINT = IMintToken(_Mint);
 
-        isReserveToken[ _MIM ] = true;
-        reserveTokens.push( _MIM );
+        isReserveToken[ _AVAX ] = true;
+        reserveTokens.push( _AVAX );
 
     //    isLiquidityToken[ _OHMDAI ] = true;
     //    liquidityTokens.push( _OHMDAI );
@@ -347,7 +347,7 @@ contract TimeTreasury is Ownable {
     }
 
     /**
-        @notice allow approved address to deposit an asset for Time
+        @notice allow approved address to deposit an asset for MINT
         @param _amount uint
         @param _token address
         @param _profit uint
@@ -364,10 +364,10 @@ contract TimeTreasury is Ownable {
         }
 
         uint value = valueOf(_token, _amount);
-        // mint Time needed and store amount of rewards for distribution
+        // mint MINT needed and store amount of rewards for distribution
         send_ = value.sub( _profit );
         limitRequirements(msg.sender, send_);
-        Time.mint( msg.sender, send_ );
+        MINT.mint( msg.sender, send_ );
 
         totalReserves = totalReserves.add( value );
         emit ReservesUpdated( totalReserves );
@@ -376,7 +376,7 @@ contract TimeTreasury is Ownable {
     }
 
     /**
-        @notice allow approved address to burn Time for reserves
+        @notice allow approved address to burn MINT for reserves
         @param _amount uint
         @param _token address
      */
@@ -385,7 +385,7 @@ contract TimeTreasury is Ownable {
         require( isReserveSpender[ msg.sender ], "Not approved" );
 
         uint value = valueOf( _token, _amount );
-        Time.burnFrom( msg.sender, value );
+        MINT.burnFrom( msg.sender, value );
 
         totalReserves = totalReserves.sub( value );
         emit ReservesUpdated( totalReserves );
@@ -406,7 +406,7 @@ contract TimeTreasury is Ownable {
 
         uint value = valueOf( _token, _amount );
 
-        uint maximumDebt = MEMOries.balanceOf( msg.sender ); // Can only borrow against sOHM held
+        uint maximumDebt = sPeppermintToken.balanceOf( msg.sender ); // Can only borrow against sMint held
         uint balance = debtorBalance[ msg.sender ];
         uint availableDebt = maximumDebt.sub( balance );
         require( value <= availableDebt, "Exceeds debt limit" );
@@ -444,19 +444,19 @@ contract TimeTreasury is Ownable {
     }
 
     /**
-        @notice allow approved address to repay borrowed reserves with Time
+        @notice allow approved address to repay borrowed reserves with MINT
         @param _amount uint
      */
     function repayDebtWithTime( uint _amount ) external {
         require( isDebtor[ msg.sender ], "Not approved as debtor" );
         require( isReserveSpender[ msg.sender ], "Not approved as spender" );
 
-        Time.burnFrom( msg.sender, _amount );
+        MINT.burnFrom( msg.sender, _amount );
 
         debtorBalance[ msg.sender ] = debtorBalance[ msg.sender ].sub( _amount );
         totalDebt = totalDebt.sub( _amount );
 
-        emit RepayDebt( msg.sender, address(Time), _amount, _amount );
+        emit RepayDebt( msg.sender, address(MINT), _amount, _amount );
     }
 
     /**
@@ -490,7 +490,7 @@ contract TimeTreasury is Ownable {
         require( isRewardManager[ msg.sender ], "Not approved" );
         require( _amount <= excessReserves(), "Insufficient reserves" );
         limitRequirements(msg.sender, _amount);
-        Time.mint( _recipient, _amount );
+        MINT.mint( _recipient, _amount );
 
         emit RewardsMinted( msg.sender, _recipient, _amount );
     } 
@@ -500,7 +500,7 @@ contract TimeTreasury is Ownable {
         @return uint
      */
     function excessReserves() public view returns ( uint ) {
-        return totalReserves.sub( Time.totalSupply().sub( totalDebt ) );
+        return totalReserves.sub( MINT.totalSupply().sub( totalDebt ) );
     }
 
     /**
@@ -525,15 +525,15 @@ contract TimeTreasury is Ownable {
     }
 
     /**
-        @notice returns Time valuation of asset
+        @notice returns MINT valuation of asset
         @param _token address
         @param _amount uint
         @return value_ uint
      */
     function valueOf( address _token, uint _amount ) public view returns ( uint value_ ) {
         if ( isReserveToken[ _token ] ) {
-            // convert amount to match Time decimals
-            value_ = _amount.mul( 10 ** Time.decimals() ).div( 10 ** IERC20( _token ).decimals() );
+            // convert amount to match MINT decimals
+            value_ = _amount.mul( 10 ** MINT.decimals() ).div( 10 ** IERC20( _token ).decimals() );
         } else if ( isLiquidityToken[ _token ] ) {
             value_ = IBondCalculator( bondCalculator[ _token ] ).valuation( _token, _amount );
         }
@@ -565,8 +565,8 @@ contract TimeTreasury is Ownable {
             debtorQueue[ _address ] = uint32(block.timestamp).add32( secondsNeededForQueue );
         } else if ( _managing == MANAGING.REWARDMANAGER ) { // 8
             rewardManagerQueue[ _address ] = uint32(block.timestamp).add32( secondsNeededForQueue );
-        } else if ( _managing == MANAGING.SOHM ) { // 9
-            sOHMQueue = uint32(block.timestamp).add32( secondsNeededForQueue );
+        } else if ( _managing == MANAGING.SMINT ) { // 9
+            sMINTQueue = uint32(block.timestamp).add32( secondsNeededForQueue );
         } else return false;
 
         emit ChangeQueued( _managing, _address );
@@ -682,9 +682,9 @@ contract TimeTreasury is Ownable {
             result = !isRewardManager[ _address ];
             isRewardManager[ _address ] = result;
 
-        } else if ( _managing == MANAGING.SOHM ) { // 9
-            sOHMQueue = 0;
-            MEMOries = IERC20(_address);
+        } else if ( _managing == MANAGING.SMINT ) { // 9
+            sMINTQueue = 0;
+            sPeppermintToken = IERC20(_address);
             result = true;
 
         } else return false;

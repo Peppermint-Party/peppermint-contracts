@@ -491,8 +491,8 @@ contract Ownable is OwnableData {
     }
 }
 
-interface IMemo is IERC20 {
-    function rebase( uint256 ohmProfit_, uint epoch_) external returns (uint256);
+interface IStakedMint is IERC20 {
+    function rebase( uint256 profit_, uint epoch_) external returns (uint256);
 
     function circulatingSupply() external view returns (uint256);
 
@@ -518,10 +518,10 @@ contract TimeStaking is Ownable {
     using LowGasSafeMath for uint256;
     using LowGasSafeMath for uint32;
     using SafeERC20 for IERC20;
-    using SafeERC20 for IMemo;
+    using SafeERC20 for IStakedMint;
 
-    IERC20 public immutable Time;
-    IMemo public immutable Memories;
+    IERC20 public immutable MINT;
+    IStakedMint public immutable Memories;
 
     struct Epoch {
         uint number;
@@ -548,16 +548,16 @@ contract TimeStaking is Ownable {
     event LogWarmupPeriod(uint period);
     
     constructor ( 
-        address _Time, 
+        address _Mint, 
         address _Memories, 
         uint32 _epochLength,
         uint _firstEpochNumber,
         uint32 _firstEpochTime
     ) {
-        require( _Time != address(0) );
-        Time = IERC20(_Time);
+        require( _Mint != address(0) );
+        MINT = IERC20(_Mint);
         require( _Memories != address(0) );
-        Memories = IMemo(_Memories);
+        Memories = IStakedMint(_Memories);
         
         epoch = Epoch({
             length: _epochLength,
@@ -576,14 +576,14 @@ contract TimeStaking is Ownable {
     mapping( address => Claim ) public warmupInfo;
 
     /**
-        @notice stake Time to enter warmup
+        @notice stake MINT to enter warmup
         @param _amount uint
         @return bool
      */
     function stake( uint _amount, address _recipient ) external returns ( bool ) {
         rebase();
         
-        Time.safeTransferFrom( msg.sender, address(this), _amount );
+        MINT.safeTransferFrom( msg.sender, address(this), _amount );
 
         Claim memory info = warmupInfo[ _recipient ];
         require( !info.lock, "Deposits for account are locked" );
@@ -601,7 +601,7 @@ contract TimeStaking is Ownable {
     }
 
     /**
-        @notice retrieve MEMO from warmup
+        @notice retrieve sMINT from warmup
         @param _recipient address
      */
     function claim ( address _recipient ) external {
@@ -615,14 +615,14 @@ contract TimeStaking is Ownable {
     }
 
     /**
-        @notice forfeit MEMO in warmup and retrieve Time
+        @notice forfeit sMINT in warmup and retrieve MINT
      */
     function forfeit() external {
         Claim memory info = warmupInfo[ msg.sender ];
         delete warmupInfo[ msg.sender ];
         uint memoBalance = Memories.balanceForGons( info.gons );
         warmupContract.retrieve( address(this),  memoBalance);
-        Time.safeTransfer( msg.sender, info.deposit);
+        MINT.safeTransfer( msg.sender, info.deposit);
         emit LogForfeit(msg.sender, memoBalance, info.deposit);
     }
 
@@ -635,7 +635,7 @@ contract TimeStaking is Ownable {
     }
 
     /**
-        @notice redeem MEMO for Time
+        @notice redeem sMINT for MINT
         @param _amount uint
         @param _trigger bool
      */
@@ -644,12 +644,12 @@ contract TimeStaking is Ownable {
             rebase();
         }
         Memories.safeTransferFrom( msg.sender, address(this), _amount );
-        Time.safeTransfer( msg.sender, _amount );
+        MINT.safeTransfer( msg.sender, _amount );
         emit LogUnstake(msg.sender, _amount);
     }
 
     /**
-        @notice returns the MEMO index, which tracks rebase growth
+        @notice returns the sMINT index, which tracks rebase growth
         @return uint
      */
     function index() external view returns ( uint ) {
@@ -684,11 +684,11 @@ contract TimeStaking is Ownable {
     }
 
     /**
-        @notice returns contract Time holdings, including bonuses provided
+        @notice returns contract MINT holdings, including bonuses provided
         @return uint
      */
     function contractBalance() public view returns ( uint ) {
-        return Time.balanceOf( address(this) ).add( totalBonus );
+        return MINT.balanceOf( address(this) ).add( totalBonus );
     }
 
     enum CONTRACTS { DISTRIBUTOR, WARMUP }

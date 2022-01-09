@@ -1,5 +1,9 @@
 .vscode/
 
+node_modules/
+
 # Local Compiled files
 bin/
 artifacts/
+cache/
+typechain/

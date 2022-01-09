@@ -74,30 +74,20 @@ interface IERC20 {
   event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
-interface IStaking {
-    function stake( uint _amount, address _recipient ) external returns ( bool );
-    function claim( address _recipient ) external;
-}
+contract StakingWarmup {
 
-contract StakingHelper {
+    address public immutable staking;
+    IERC20 public immutable sPeppermintToken;
 
-    event LogStake(address indexed recipient, uint amount);
-
-    IStaking public immutable staking;
-    IERC20 public immutable Time;
-
-    constructor ( address _staking, address _Time ) {
+    constructor ( address _staking, address _MEMOries ) {
         require( _staking != address(0) );
-        staking = IStaking(_staking);
-        require( _Time != address(0) );
-        Time = IERC20(_Time);
+        staking = _staking;
+        require( _MEMOries != address(0) );
+        sPeppermintToken = IERC20(_MEMOries);
     }
 
-    function stake( uint _amount, address recipient ) external {
-        Time.transferFrom( msg.sender, address(this), _amount );
-        Time.approve( address(staking), _amount );
-        staking.stake( _amount, recipient );
-        staking.claim( recipient );
-        emit LogStake(recipient, _amount);
+    function retrieve( address _staker, uint _amount ) external {
+        require( msg.sender == staking, "NA" );
+        sPeppermintToken.transfer( _staker, _amount );
     }
 }

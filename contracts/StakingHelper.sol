@@ -74,20 +74,30 @@ interface IERC20 {
   event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
-contract StakingWarmup {
+interface IStaking {
+    function stake( uint _amount, address _recipient ) external returns ( bool );
+    function claim( address _recipient ) external;
+}
 
-    address public immutable staking;
-    IERC20 public immutable MEMOries;
+contract StakingHelper {
 
-    constructor ( address _staking, address _MEMOries ) {
+    event LogStake(address indexed recipient, uint amount);
+
+    IStaking public immutable staking;
+    IERC20 public immutable MINT;
+
+    constructor ( address _staking, address _Mint ) {
         require( _staking != address(0) );
-        staking = _staking;
-        require( _MEMOries != address(0) );
-        MEMOries = IERC20(_MEMOries);
+        staking = IStaking(_staking);
+        require( _Mint != address(0) );
+        MINT = IERC20(_Mint);
     }
 
-    function retrieve( address _staker, uint _amount ) external {
-        require( msg.sender == staking, "NA" );
-        MEMOries.transfer( _staker, _amount );
+    function stake( uint _amount, address recipient ) external {
+        MINT.transferFrom( msg.sender, address(this), _amount );
+        MINT.approve( address(staking), _amount );
+        staking.stake( _amount, recipient );
+        staking.claim( recipient );
+        emit LogStake(recipient, _amount);
     }
 }

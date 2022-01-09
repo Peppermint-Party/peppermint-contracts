@@ -610,30 +610,30 @@ library SafeERC20 {
     }
 }
 
-interface IMEMO is IERC20 {
+interface IStakedMint is IERC20 {
     function index() external view returns ( uint );
 }
 
-contract wMEMO is ERC20 {
-    using SafeERC20 for IMEMO;
+contract wsPeppermintToken is ERC20 {
+    using SafeERC20 for IStakedMint;
     using LowGasSafeMath for uint;
 
-    IMEMO public immutable MEMO;
+    IStakedMint public immutable sMINT;
     event Wrap(address indexed recipient, uint256 amountMemo, uint256 amountWmemo);
     event UnWrap(address indexed recipient,uint256 amountWmemo, uint256 amountMemo);
 
-    constructor( address _MEMO ) ERC20( 'Wrapped MEMO', 'wMEMO' ) {
-        require( _MEMO != address(0) );
-        MEMO = IMEMO(_MEMO);
+    constructor( address _sMINT ) ERC20( "Wrapped sMINT", "wsMINT" ) {
+        require( _sMINT != address(0) );
+        sMINT = IStakedMint(_sMINT);
     }
 
     /**
-        @notice wrap MEMO
+        @notice wrap sMINT
         @param _amount uint
         @return uint
      */
     function wrap( uint _amount ) external returns ( uint ) {
-        MEMO.safeTransferFrom( msg.sender, address(this), _amount );
+        sMINT.safeTransferFrom( msg.sender, address(this), _amount );
         
         uint value = MEMOTowMEMO( _amount );
         _mint( msg.sender, value );
@@ -642,7 +642,7 @@ contract wMEMO is ERC20 {
     }
 
     /**
-        @notice unwrap MEMO
+        @notice unwrap sMINT
         @param _amount uint
         @return uint
      */
@@ -650,27 +650,27 @@ contract wMEMO is ERC20 {
         _burn( msg.sender, _amount );
 
         uint value = wMEMOToMEMO( _amount );
-        MEMO.safeTransfer( msg.sender, value );
+        sMINT.safeTransfer( msg.sender, value );
         emit UnWrap(msg.sender, _amount, value);
         return value;
     }
 
     /**
-        @notice converts wMEMO amount to MEMO
+        @notice converts wsPeppermintToken amount to sMINT
         @param _amount uint
         @return uint
      */
     function wMEMOToMEMO( uint _amount ) public view returns ( uint ) {
-        return _amount.mul( MEMO.index() ).div( 10 ** decimals );
+        return _amount.mul( sMINT.index() ).div( 10 ** decimals );
     }
 
     /**
-        @notice converts MEMO amount to wMEMO
+        @notice converts sMINT amount to wsPeppermintToken
         @param _amount uint
         @return uint
      */
     function MEMOTowMEMO( uint _amount ) public view returns ( uint ) {
-        return _amount.mul( 10 ** decimals ).div( MEMO.index() );
+        return _amount.mul( 10 ** decimals ).div( sMINT.index() );
     }
 
 }
