@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-pragma solidity 0.7.5;
+pragma solidity 0.8.0;
 pragma abicoder v2;
 
 interface IOwnable {
@@ -249,7 +249,7 @@ library Address {
     }
 
     function addressToString(address _address) internal pure returns(string memory) {
-        bytes32 _bytes = bytes32(uint256(_address));
+        bytes32 _bytes = bytes32(bytes20(_address));
         bytes memory HEX = "0123456789abcdef";
         bytes memory _addr = new bytes(42);
 
@@ -328,7 +328,7 @@ library SafeERC20 {
 
 library FullMath {
     function fullMul(uint256 x, uint256 y) private pure returns (uint256 l, uint256 h) {
-        uint256 mm = mulmod(x, y, uint256(-1));
+        uint256 mm = mulmod(x, y, ~uint256(0));
         l = x * y;
         h = mm - l;
         if (mm < l) h -= 1;
@@ -339,10 +339,10 @@ library FullMath {
         uint256 h,
         uint256 d
     ) private pure returns (uint256) {
-        uint256 pow2 = d & -d;
+        uint256 pow2 = d & (~d + 1);
         d /= pow2;
         l /= pow2;
-        l += h * ((-pow2) / pow2 + 1);
+        l += h * ((~pow2 + 1) / pow2 + 1);
         uint256 r = 1;
         r *= 2 - d * r;
         r *= 2 - d * r;
@@ -397,13 +397,13 @@ library FixedPoint {
         require(denominator > 0, 'FixedPoint::fraction: division by zero');
         if (numerator == 0) return FixedPoint.uq112x112(0);
 
-        if (numerator <= uint144(-1)) {
+        if (numerator <= ~uint144(0)) {
             uint256 result = (numerator << RESOLUTION) / denominator;
-            require(result <= uint224(-1), 'FixedPoint::fraction: overflow');
+            require(result <= ~uint224(0), 'FixedPoint::fraction: overflow');
             return uq112x112(uint224(result));
         } else {
             uint256 result = FullMath.mulDiv(numerator, Q112, denominator);
-            require(result <= uint224(-1), 'FixedPoint::fraction: overflow');
+            require(result <= ~uint224(0), 'FixedPoint::fraction: overflow');
             return uq112x112(uint224(result));
         }
     }
